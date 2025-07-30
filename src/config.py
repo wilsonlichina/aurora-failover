@@ -13,7 +13,7 @@ class DatabaseConfig:
     port: int = 5432
     database: str = "postgres"
     username: str = "postgres"
-    password: str = "Guoguo123"
+    password: str = ""
     
     def get_connection_string(self) -> str:
         """获取连接字符串"""
