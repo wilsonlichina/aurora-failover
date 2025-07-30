@@ -26,7 +26,7 @@ class TestResult:
     """测试结果"""
     connection_type: str
     start_time: datetime
-    end_time: datetime
+    end_time: datetime = None
     total_attempts: int = 0
     successful_attempts: int = 0
     failed_attempts: int = 0
