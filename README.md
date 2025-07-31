@@ -20,14 +20,17 @@ pip install -r requirements.txt
 
 ### pgbench 安装（负载测试功能需要）
 ```bash
-# macOS
-brew install postgresql
-
-# Ubuntu/Debian
-sudo apt-get install postgresql-client
-
-# CentOS/RHEL
+# Amazon Linux 2
 sudo yum install postgresql
+
+# Amazon Linux 2023 - PostgreSQL 15
+sudo dnf install postgresql15
+
+# Amazon Linux 2023 - PostgreSQL 16
+sudo dnf install postgresql16
+
+# 验证安装
+pgbench --version
 ```
 
 ## 使用方法
