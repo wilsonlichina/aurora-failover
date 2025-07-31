@@ -10,7 +10,14 @@ class FailoverWithPgbenchTester:
     
     def __init__(self, config):
         self.config = config
-        self.connection_tester = ConnectionTester(config)
+        self.connection_testers = {}
+        
+        # 根据测试模式创建相应的连接测试器
+        if config.mode in ['direct', 'both']:
+            self.connection_testers['direct'] = ConnectionTester(config, 'direct')
+        if config.mode in ['proxy', 'both']:
+            self.connection_testers['proxy'] = ConnectionTester(config, 'proxy')
+            
         self.load_generator = PgbenchLoadGenerator(config.pgbench_config)
         self.results = {}
         self.failover_detected = False
