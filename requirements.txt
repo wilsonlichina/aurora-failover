@@ -1,1 +1,6 @@
 psycopg2-binary==2.9.9
+
+# 注意：pgbench 需要单独安装
+# 在 macOS 上：brew install postgresql
+# 在 Ubuntu 上：sudo apt-get install postgresql-client
+# 在 CentOS/RHEL 上：sudo yum install postgresql

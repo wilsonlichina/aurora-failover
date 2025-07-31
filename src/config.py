@@ -13,7 +13,7 @@ class DatabaseConfig:
     port: int = 5432
     database: str = "postgres"
     username: str = "postgres"
-    password: str = ""
+    password: str = "Guoguo123"
     
     def get_connection_string(self) -> str:
         """获取连接字符串"""
@@ -23,7 +23,7 @@ class DatabaseConfig:
 class TestConfig:
     """测试配置类"""
     
-    def __init__(self):
+    def __init__(self, duration=300, interval=0.1, mode='both', pgbench_config=None):
         # Aurora 直接连接配置
         self.direct_writer = DatabaseConfig(
             host="ards-with-rdsproxy.cluster-czfhjvjvmivm.ap-southeast-1.rds.amazonaws.com"
@@ -39,6 +39,14 @@ class TestConfig:
         self.proxy_reader = DatabaseConfig(
             host="proxy-1753874304259-ards-with-rdsproxy-read-only.endpoint.proxy-czfhjvjvmivm.ap-southeast-1.rds.amazonaws.com"
         )
+        
+        # 测试参数
+        self.duration = duration
+        self.interval = interval
+        self.mode = mode
+        
+        # pgbench 配置
+        self.pgbench_config = pgbench_config
         
         # 连接参数
         self.connection_timeout = 5  # 连接超时时间（秒）
@@ -60,3 +68,27 @@ class TestConfig:
             return self.proxy_writer if endpoint_type == 'writer' else self.proxy_reader
         else:
             raise ValueError(f"不支持的连接类型: {connection_type}")
+    
+    def get_database_connections_for_pgbench(self) -> Dict:
+        """获取用于 pgbench 的数据库连接配置"""
+        connections = {}
+        
+        if self.mode in ['direct', 'both']:
+            connections['direct'] = {
+                'host': self.direct_writer.host,
+                'port': self.direct_writer.port,
+                'user': self.direct_writer.username,
+                'password': self.direct_writer.password,
+                'database': self.direct_writer.database
+            }
+        
+        if self.mode in ['proxy', 'both']:
+            connections['proxy'] = {
+                'host': self.proxy_writer.host,
+                'port': self.proxy_writer.port,
+                'user': self.proxy_writer.username,
+                'password': self.proxy_writer.password,
+                'database': self.proxy_writer.database
+            }
+        
+        return connections
