@@ -11,6 +11,21 @@
 - 自动生成详细的对比报告
 - 支持自定义测试参数
 
+## 快速安装验证
+
+在开始使用之前，请确保所有依赖都已正确安装：
+
+```bash
+# 验证 Python 依赖
+pip list | grep -E "(psycopg2|boto3)"
+
+# 验证 pgbench 安装
+pgbench --version
+
+# 如果 pgbench 未找到，请安装 contrib 包
+sudo dnf install postgresql16-contrib
+```
+
 ## 安装依赖
 
 ### Python 依赖
@@ -21,17 +36,22 @@ pip install -r requirements.txt
 ### pgbench 安装（负载测试功能需要）
 ```bash
 # Amazon Linux 2
-sudo yum install postgresql
+sudo yum install postgresql postgresql-contrib
 
 # Amazon Linux 2023 - PostgreSQL 15
-sudo dnf install postgresql15
+sudo dnf install postgresql15 postgresql15-contrib
 
-# Amazon Linux 2023 - PostgreSQL 16
-sudo dnf install postgresql16
+# Amazon Linux 2023 - PostgreSQL 16（推荐）
+sudo dnf install postgresql16 postgresql16-contrib
 
 # 验证安装
 pgbench --version
 ```
+
+**重要提示**：
+- pgbench 工具包含在 `postgresql16-contrib` 包中，不是基础的 `postgresql16` 包
+- 必须同时安装基础包和 contrib 包：`sudo dnf install postgresql16 postgresql16-contrib`
+- 如果只安装了基础包，会出现 "pgbench: command not found" 错误
 
 ## 使用方法
 
@@ -247,13 +267,39 @@ proxy_reader: proxy-1753874304259-ards-with-rdsproxy-read-only.endpoint.proxy-cz
    - 检查 Python 路径配置
 
 4. **pgbench 命令未找到**：
-   - 确保已安装 PostgreSQL 客户端
+   - 确保已安装 PostgreSQL 客户端和 contrib 包
+   - 对于 PostgreSQL 16：`sudo dnf install postgresql16 postgresql16-contrib`
    - 检查 PATH 环境变量
+   - 验证安装：`pgbench --version`
 
 5. **pgbench 初始化失败**：
    - 检查数据库连接权限
    - 确认数据库有足够空间
    - 验证用户有创建表的权限
+
+### 安装验证步骤
+
+如果遇到 pgbench 安装问题，请按以下步骤排查：
+
+1. **检查已安装的 PostgreSQL 包**：
+   ```bash
+   dnf list installed | grep postgresql
+   ```
+
+2. **查看可用的 PostgreSQL 包**：
+   ```bash
+   dnf list available | grep postgresql16
+   ```
+
+3. **确保安装了 contrib 包**：
+   ```bash
+   sudo dnf install postgresql16-contrib
+   ```
+
+4. **验证 pgbench 可用性**：
+   ```bash
+   pgbench --version
+   ```
 
 ### 调试模式
 
