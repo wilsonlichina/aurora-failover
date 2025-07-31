@@ -9,7 +9,7 @@ from src.connection_tester import ConnectionTester
 from src.config import TestConfig
 from src.reporter import Reporter
 from src.pgbench_load_generator import PgbenchConfig
-from src.failover_with_pgbench_tester import FailoverWithPgbenchTester
+from src.failover_tester import FailoverTester
 
 
 def parse_arguments():
@@ -48,7 +48,7 @@ def main():
     print("=" * 50)
     
     if args.enable_pgbench:
-        # 使用集成的 pgbench 测试器
+        # 使用 pgbench 负载测试器
         print("🔧 启用 pgbench 负载测试模式")
         
         # 构建 pgbench 配置
@@ -73,8 +73,10 @@ def main():
         # 设置 pgbench 连接配置
         config.pgbench_config.connections = config.get_database_connections_for_pgbench()
         
+        # 使用故障转移测试器
+        tester = FailoverTester(config)
+        
         # 运行集成测试
-        tester = FailoverWithPgbenchTester(config)
         tester.run_test()
         
     else:
