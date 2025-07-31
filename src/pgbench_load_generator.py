@@ -125,7 +125,7 @@ class PgbenchLoadGenerator:
         return subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,  # 将 stderr 重定向到 stdout
             text=True,
             env=env
         )
@@ -140,7 +140,7 @@ class PgbenchLoadGenerator:
             line = line.strip()
             
             # 解析进度报告
-            # 格式: progress: 5.0 s, 1234.5 tps, lat 8.123 ms stddev 1.456
+            # 格式: progress: 5.0 s, 1234.5 tps, lat 8.123 ms stddev 1.456, 0 failed
             if line.startswith('progress:'):
                 metrics = self._parse_progress_line(line)
                 if metrics:
@@ -174,17 +174,19 @@ class PgbenchLoadGenerator:
         """解析进度行"""
         try:
             # 使用正则表达式解析
-            # progress: 5.0 s, 1234.5 tps, lat 8.123 ms stddev 1.456
-            pattern = r'progress: ([\d.]+) s, ([\d.]+) tps, lat ([\d.]+) ms stddev ([\d.]+)'
+            # progress: 5.0 s, 1234.5 tps, lat 8.123 ms stddev 1.456, 0 failed
+            pattern = r'progress: ([\d.]+) s, ([\d.]+) tps, lat ([\d.]+) ms stddev ([\d.]+)(?:, (\d+) failed)?'
             match = re.search(pattern, line)
             
             if match:
+                failed_count = int(match.group(5)) if match.group(5) else 0
                 return {
                     'type': 'progress',
                     'elapsed_time': float(match.group(1)),
                     'tps': float(match.group(2)),
                     'latency_ms': float(match.group(3)),
-                    'latency_stddev': float(match.group(4))
+                    'latency_stddev': float(match.group(4)),
+                    'failed_count': failed_count
                 }
         except Exception as e:
             print(f"解析进度行失败: {line}, 错误: {e}")
