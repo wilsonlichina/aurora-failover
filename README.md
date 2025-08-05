@@ -4,26 +4,57 @@
 
 ## 功能特性
 
-- 支持直接连接和 RDS 代理连接两种测试模式
-- 实时监控连接状态和响应时间
-- 精确测量故障转移停机时间
-- **新增：pgbench 负载测试功能**
-- 自动生成详细的对比报告
-- 支持自定义测试参数
+- **双模式测试**：支持直接连接和 RDS 代理连接两种测试模式
+- **业务场景模拟**：真实的业务操作测试（读/写/事务），替代简单心跳查询
+- **pgbench 负载测试**：标准数据库性能基准测试
+- **精确停机时间监控**：独立监控每种连接类型的 downtime，精度达到 100ms
+- **并发测试支持**：多线程并发执行业务操作
+- **连接池管理**：智能连接池，自动处理连接失效和重建
+- **详细性能分析**：按操作类型统计成功率、响应时间、TPS 等指标
+- **自动生成对比报告**：生成详细的性能对比和故障转移分析报告
 
-## 快速安装验证
+## 快速开始
 
-在开始使用之前，请确保所有依赖都已正确安装：
+### 1. 安装依赖
 
 ```bash
-# 验证 Python 依赖
-pip list | grep -E "(psycopg2|boto3)"
+# 创建虚拟环境
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+# 或 .venv\Scripts\activate  # Windows
 
-# 验证 pgbench 安装
+# 安装 Python 依赖
+pip install -r requirements.txt
+
+# 安装 pgbench（负载测试功能需要）
+# Amazon Linux 2023 - PostgreSQL 16（推荐）
+sudo dnf install postgresql16 postgresql16-contrib
+
+# 验证安装
 pgbench --version
+```
 
-# 如果 pgbench 未找到，请安装 contrib 包
-sudo dnf install postgresql16-contrib
+### 2. 基本使用
+
+```bash
+# 运行完整对比测试（推荐）
+python main.py --mode both --duration 300
+
+# 运行 pgbench 负载测试
+python main.py --mode both --duration 300 --enable-pgbench
+
+# 使用脚本快速测试
+./run_test.sh
+```
+
+### 3. 手动触发故障转移
+
+在测试运行期间，在另一个终端执行：
+
+```bash
+aws rds failover-db-cluster \
+    --db-cluster-identifier ards-with-rdsproxy \
+    --region ap-southeast-1
 ```
 
 ## 安装依赖
@@ -55,24 +86,37 @@ pgbench --version
 
 ## 使用方法
 
-### 基本连接测试（原有功能）
+### 基本业务场景测试
 
 ```bash
 # 运行完整对比测试（推荐）
 python main.py --mode both --duration 300
+
+# 启用详细日志输出
+python main.py --mode both --duration 300 --verbose
 
 # 仅测试直接连接
 python main.py --mode direct --duration 180
 
 # 仅测试代理连接
 python main.py --mode proxy --duration 180
+
+# 自定义业务操作权重
+python main.py --mode both --duration 300 \
+    --read-weight 60 --write-weight 30 --transaction-weight 10
+
+# 自定义并发线程数
+python main.py --mode both --duration 300 --concurrent-workers 5
 ```
 
-### pgbench 负载测试（新功能）
+### pgbench 负载测试
 
 ```bash
 # 基本负载测试
 python main.py --mode both --duration 300 --enable-pgbench
+
+# 启用详细日志的负载测试
+python main.py --mode both --duration 300 --enable-pgbench --verbose
 
 # 自定义负载参数
 python main.py --mode both --duration 300 --enable-pgbench \
@@ -99,6 +143,22 @@ python main.py --mode both --duration 600 --enable-pgbench \
 
 - `--interval`: 查询间隔（秒），默认 0.1 秒
 
+- `--verbose`, `-v`: 启用详细日志输出，包括：
+  - 每个操作的详细执行过程
+  - 连接状态变化
+  - 停机时间检测事件
+  - 实时性能指标
+  - 日志文件保存到 `results/test_log_*.log`
+
+#### 业务场景测试参数
+- `--concurrent-workers`: 并发工作线程数，默认 3
+
+- `--read-weight`: 读操作权重百分比，默认 70
+
+- `--write-weight`: 写操作权重百分比，默认 20
+
+- `--transaction-weight`: 事务操作权重百分比，默认 10
+
 #### pgbench 负载测试参数
 - `--enable-pgbench`: 启用 pgbench 负载测试
 
@@ -117,10 +177,10 @@ python main.py --mode both --duration 600 --enable-pgbench \
 
 ### 测试流程
 
-#### 标准连接测试流程
+#### 标准业务场景测试流程
 1. **准备阶段**：
    - 启动测试程序
-   - 建立数据库连接
+   - 初始化连接池和测试表
    - 开始连续监控
 
 2. **故障转移阶段**：
@@ -199,7 +259,7 @@ aws rds failover-db-cluster \
    - `proxy_result_YYYYMMDD_HHMMSS.json`
 
 2. **对比报告**：
-   - `comparison_report_YYYYMMDD_HHMMSS.txt`
+   - `business_comparison_report_YYYYMMDD_HHMMSS.txt`
 
 #### pgbench 负载测试
 1. **综合报告**：
@@ -310,17 +370,24 @@ proxy_reader: proxy-1753874304259-ards-with-rdsproxy-read-only.endpoint.proxy-cz
 ```
 aurora-failover/
 ├── main.py                              # 主程序入口
+├── enhanced_logging.py                  # 增强日志功能模块
 ├── requirements.txt                     # 依赖包列表
 ├── README.md                           # 使用说明
 ├── design.md                           # 设计文档
+├── business.md                         # 业务场景设计文档
+├── run_test.sh                         # 快速测试脚本（含详细日志）
 ├── src/                                # 源代码目录
 │   ├── __init__.py
 │   ├── config.py                       # 配置管理
-│   ├── connection_tester.py            # 连接测试核心逻辑
-│   ├── pgbench_load_generator.py       # pgbench 负载生成器（新增）
-│   ├── failover_with_pgbench_tester.py # 集成测试器（新增）
+│   ├── connection_tester.py            # 连接测试核心逻辑（业务场景）
+│   ├── pgbench_load_generator.py       # pgbench 负载生成器
+│   ├── failover_tester.py              # 集成测试器（故障转移+负载）
 │   └── reporter.py                     # 结果报告生成
 └── results/                            # 测试结果输出目录
+    ├── *_result_*.json                 # 详细测试结果（JSON格式）
+    ├── *_comparison_report_*.txt       # 业务场景对比报告
+    ├── pgbench_failover_report_*.txt   # pgbench负载测试报告
+    └── test_log_*.log                  # 详细日志文件（--verbose模式）
 ```
 
 ## 性能基准

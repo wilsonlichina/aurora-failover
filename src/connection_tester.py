@@ -267,10 +267,13 @@ class ConnectionTester:
             start_time=datetime.now(timezone.utc)
         )
         
+        print(f"[{self.connection_type}] 🔍 开始读操作 {operation_id}")
+        
         conn = self._get_connection()
         if not conn:
             operation.end_time = datetime.now(timezone.utc)
             operation.error_message = "无法获取数据库连接"
+            print(f"[{self.connection_type}] ❌ 读操作 {operation_id} 失败: {operation.error_message}")
             return operation
         
         try:
@@ -287,6 +290,7 @@ class ConnectionTester:
                 ])
                 
                 if read_type == 'user_list':
+                    print(f"[{self.connection_type}] 📋 执行用户列表查询 {operation_id}")
                     cursor.execute("""
                         SELECT id, username, email, last_login, login_count, status
                         FROM business_users 
@@ -296,6 +300,7 @@ class ConnectionTester:
                     """)
                     
                 elif read_type == 'order_summary':
+                    print(f"[{self.connection_type}] 📊 执行订单统计查询 {operation_id}")
                     cursor.execute("""
                         SELECT status, COUNT(*) as count, SUM(amount) as total_amount
                         FROM business_orders 
@@ -305,6 +310,7 @@ class ConnectionTester:
                     
                 elif read_type == 'product_search':
                     category = random.choice(['Electronics', 'Books', 'Clothing', 'Home'])
+                    print(f"[{self.connection_type}] 🔍 执行产品搜索查询 {operation_id} (类别: {category})")
                     cursor.execute("""
                         SELECT id, name, price, stock, category
                         FROM business_products 
@@ -315,6 +321,7 @@ class ConnectionTester:
                     
                 elif read_type == 'user_orders':
                     user_id = random.randint(1, 100)
+                    print(f"[{self.connection_type}] 👤 执行用户订单查询 {operation_id} (用户ID: {user_id})")
                     cursor.execute("""
                         SELECT o.id, o.order_number, o.amount, o.status, o.created_at
                         FROM business_orders o
@@ -325,6 +332,7 @@ class ConnectionTester:
                     """, (user_id,))
                     
                 else:  # recent_logs
+                    print(f"[{self.connection_type}] 📝 执行最近日志查询 {operation_id}")
                     cursor.execute("""
                         SELECT l.action, l.details, l.created_at, u.username
                         FROM business_logs l

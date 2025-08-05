@@ -5,11 +5,15 @@ Aurora PostgreSQL 故障转移测试主程序
 
 import argparse
 import sys
+import os
 from src.connection_tester import ConnectionTester
 from src.config import TestConfig
 from src.reporter import Reporter
 from src.pgbench_load_generator import PgbenchConfig
 from src.failover_tester import FailoverTester
+
+# 导入增强日志功能
+from enhanced_logging import setup_enhanced_logging, log_connection_status, log_test_progress
 
 
 def parse_arguments():
@@ -23,6 +27,8 @@ def parse_arguments():
                        help='测试持续时间（秒）')
     parser.add_argument('--interval', type=float, default=0.1, 
                        help='查询间隔（秒）')
+    parser.add_argument('--verbose', '-v', action='store_true',
+                       help='启用详细日志输出')
     
     # 业务场景测试参数
     parser.add_argument('--concurrent-workers', type=int, default=3,
@@ -54,6 +60,14 @@ def parse_arguments():
 def main():
     args = parse_arguments()
     
+    # 确保结果目录存在
+    os.makedirs('results', exist_ok=True)
+    
+    # 设置增强日志
+    if args.verbose:
+        logger = setup_enhanced_logging()
+        print("🔧 已启用详细日志输出")
+    
     print("Aurora PostgreSQL 故障转移测试工具")
     print("=" * 50)
     
@@ -66,6 +80,8 @@ def main():
     if args.enable_pgbench:
         # 使用 pgbench 负载测试器
         print("🔧 启用 pgbench 负载测试模式")
+        if args.verbose:
+            log_connection_status('system', 'connected', 'pgbench 负载测试模式已启用')
         
         # 构建 pgbench 配置
         pgbench_config = PgbenchConfig(
@@ -102,6 +118,8 @@ def main():
     else:
         # 使用业务场景测试器
         print("🔧 使用业务场景测试模式")
+        if args.verbose:
+            log_connection_status('system', 'connected', '业务场景测试模式已启用')
         
         # 加载配置
         config = TestConfig(
@@ -116,6 +134,9 @@ def main():
         
         if args.mode in ['direct', 'both']:
             print("\n开始直接连接测试...")
+            if args.verbose:
+                log_connection_status('direct', 'connecting', '开始直接连接测试')
+            
             direct_tester = ConnectionTester(config, 'direct')
             direct_result = direct_tester.run_test(args.duration, args.concurrent_workers)
             
@@ -123,9 +144,15 @@ def main():
             reporter = Reporter()
             reporter.save_result('direct', direct_result)
             print(f"直接连接测试完成，结果已保存")
+            
+            if args.verbose:
+                log_test_progress('direct', direct_result.total_attempts, direct_result.success_rate)
         
         if args.mode in ['proxy', 'both']:
             print("\n开始代理连接测试...")
+            if args.verbose:
+                log_connection_status('proxy', 'connecting', '开始代理连接测试')
+            
             proxy_tester = ConnectionTester(config, 'proxy')
             proxy_result = proxy_tester.run_test(args.duration, args.concurrent_workers)
             
@@ -133,12 +160,17 @@ def main():
             reporter = Reporter()
             reporter.save_result('proxy', proxy_result)
             print(f"代理连接测试完成，结果已保存")
+            
+            if args.verbose:
+                log_test_progress('proxy', proxy_result.total_attempts, proxy_result.success_rate)
         
         if args.mode == 'both':
             print("\n生成对比报告...")
             reporter.generate_comparison_report()
     
     print("\n✅ 测试完成！")
+    if args.verbose:
+        print("📄 详细日志已保存到 results/test_log_*.log")
 
 
 if __name__ == "__main__":
@@ -149,4 +181,6 @@ if __name__ == "__main__":
         sys.exit(1)
     except Exception as e:
         print(f"\n❌ 程序执行出错: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
