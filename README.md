@@ -43,8 +43,11 @@ python main.py --mode both --duration 300
 # 运行 pgbench 负载测试
 python main.py --mode both --duration 300 --enable-pgbench
 
-# 使用脚本快速测试
-./run_test.sh
+# 使用脚本快速测试（支持参数配置）
+./run_test.sh --help                                    # 查看帮助信息
+./run_test.sh                                          # 使用默认配置
+./run_test.sh --enable-pgbench                         # 启用 pgbench 负载测试
+./run_test.sh --concurrent-workers 3 --enable-pgbench  # 业务场景 + pgbench 组合测试
 ```
 
 ### 3. 手动触发故障转移
@@ -86,7 +89,56 @@ pgbench --version
 
 ## 使用方法
 
-### 基本业务场景测试
+### 快速测试脚本 (run_test.sh)
+
+`run_test.sh` 脚本提供了便捷的测试启动方式，支持灵活的参数配置：
+
+#### 基本用法
+
+```bash
+# 查看帮助信息
+./run_test.sh --help
+
+# 使用默认配置（纯业务场景测试）
+./run_test.sh
+
+# 启用 pgbench 负载测试
+./run_test.sh --enable-pgbench
+
+# 业务场景 + pgbench 组合测试
+./run_test.sh --concurrent-workers 3 --enable-pgbench
+```
+
+#### 支持的参数
+
+- `--mode MODE` - 测试模式 (direct|proxy|both，默认: both)
+- `--duration SECONDS` - 测试时长，秒 (默认: 300)
+- `--concurrent-workers NUM` - 业务场景并发工作线程数 (默认: 3)
+- `--enable-pgbench` - 启用 pgbench 负载测试
+- `--pgbench-clients NUM` - pgbench 客户端数 (默认: 10)
+- `--pgbench-jobs NUM` - pgbench 作业数 (默认: 2)
+- `--pgbench-scale NUM` - pgbench 数据规模因子 (默认: 10)
+- `--warmup-time SECONDS` - 预热时间，秒 (默认: 60)
+- `--verbose` - 启用详细日志（默认启用）
+- `--help, -h` - 显示帮助信息
+
+#### 使用示例
+
+```bash
+# 仅测试直接连接 3 分钟
+./run_test.sh --mode direct --duration 180
+
+# 高负载 pgbench 测试
+./run_test.sh --enable-pgbench --pgbench-clients 20 --duration 600
+
+# 业务场景测试，5个并发线程
+./run_test.sh --concurrent-workers 5
+
+# 完整组合测试
+./run_test.sh --concurrent-workers 5 --enable-pgbench --pgbench-clients 15 --duration 600
+```
+
+### 直接使用 Python 命令
 
 ```bash
 # 运行完整对比测试（推荐）
