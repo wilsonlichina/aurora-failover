@@ -23,7 +23,8 @@ class DatabaseConfig:
 class TestConfig:
     """测试配置类"""
     
-    def __init__(self, duration=300, interval=0.1, mode='both', pgbench_config=None):
+    def __init__(self, duration=300, interval=0.1, mode='both', pgbench_config=None, 
+                 concurrent_workers=3, read_weight=70, write_weight=20, transaction_weight=10):
         # Aurora 直接连接配置
         self.direct_writer = DatabaseConfig(
             host="ards-with-rdsproxy.cluster-czfhjvjvmivm.ap-southeast-1.rds.amazonaws.com"
@@ -47,6 +48,19 @@ class TestConfig:
         
         # pgbench 配置
         self.pgbench_config = pgbench_config
+        
+        # 业务测试配置
+        self.concurrent_workers = concurrent_workers
+        self.read_weight = read_weight
+        self.write_weight = write_weight
+        self.transaction_weight = transaction_weight
+        
+        # 操作间隔配置
+        self.min_operation_interval = 0.1  # 最小操作间隔
+        self.max_operation_interval = 0.5  # 最大操作间隔
+        
+        # 连接池配置
+        self.connection_pool_size = 5
         
         # 连接参数
         self.connection_timeout = 5  # 连接超时时间（秒）

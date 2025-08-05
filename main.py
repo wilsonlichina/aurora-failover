@@ -24,6 +24,16 @@ def parse_arguments():
     parser.add_argument('--interval', type=float, default=0.1, 
                        help='查询间隔（秒）')
     
+    # 业务场景测试参数
+    parser.add_argument('--concurrent-workers', type=int, default=3,
+                       help='并发工作线程数 (默认: 3)')
+    parser.add_argument('--read-weight', type=int, default=70,
+                       help='读操作权重百分比 (默认: 70)')
+    parser.add_argument('--write-weight', type=int, default=20,
+                       help='写操作权重百分比 (默认: 20)')
+    parser.add_argument('--transaction-weight', type=int, default=10,
+                       help='事务操作权重百分比 (默认: 10)')
+    
     # pgbench 负载测试参数
     parser.add_argument('--enable-pgbench', action='store_true',
                        help='启用 pgbench 负载测试')
@@ -47,6 +57,12 @@ def main():
     print("Aurora PostgreSQL 故障转移测试工具")
     print("=" * 50)
     
+    # 验证权重参数
+    total_weight = args.read_weight + args.write_weight + args.transaction_weight
+    if total_weight != 100:
+        print(f"⚠️  警告：操作权重总和为 {total_weight}%，不等于 100%")
+        print("   权重将按比例调整")
+    
     if args.enable_pgbench:
         # 使用 pgbench 负载测试器
         print("🔧 启用 pgbench 负载测试模式")
@@ -67,7 +83,11 @@ def main():
             duration=args.duration,
             interval=args.interval,
             mode=args.mode,
-            pgbench_config=pgbench_config
+            pgbench_config=pgbench_config,
+            concurrent_workers=args.concurrent_workers,
+            read_weight=args.read_weight,
+            write_weight=args.write_weight,
+            transaction_weight=args.transaction_weight
         )
         
         # 设置 pgbench 连接配置
@@ -80,16 +100,24 @@ def main():
         tester.run_test()
         
     else:
-        # 使用原有的连接测试器
-        print("🔧 使用标准连接测试模式")
+        # 使用业务场景测试器
+        print("🔧 使用业务场景测试模式")
         
         # 加载配置
-        config = TestConfig(duration=args.duration, interval=args.interval, mode=args.mode)
+        config = TestConfig(
+            duration=args.duration, 
+            interval=args.interval, 
+            mode=args.mode,
+            concurrent_workers=args.concurrent_workers,
+            read_weight=args.read_weight,
+            write_weight=args.write_weight,
+            transaction_weight=args.transaction_weight
+        )
         
         if args.mode in ['direct', 'both']:
             print("\n开始直接连接测试...")
             direct_tester = ConnectionTester(config, 'direct')
-            direct_result = direct_tester.run_test(args.duration, args.interval)
+            direct_result = direct_tester.run_test(args.duration, args.concurrent_workers)
             
             # 生成报告
             reporter = Reporter()
@@ -99,7 +127,7 @@ def main():
         if args.mode in ['proxy', 'both']:
             print("\n开始代理连接测试...")
             proxy_tester = ConnectionTester(config, 'proxy')
-            proxy_result = proxy_tester.run_test(args.duration, args.interval)
+            proxy_result = proxy_tester.run_test(args.duration, args.concurrent_workers)
             
             # 生成报告
             reporter = Reporter()
